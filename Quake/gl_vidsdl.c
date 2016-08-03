@@ -29,6 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "resource.h"
 #include "SDL.h"
 #include "SDL_syswm.h"
+#include "gl_heap.h"
 
 #define MAX_MODE_LIST	600 //johnfitz -- was 30
 #define MAX_BPPS_LIST	5
@@ -1286,6 +1287,8 @@ void GL_BeginRendering (int *x, int *y, int *width, int *height)
 	err = vkResetFences(vulkan_globals.device, 1, &command_buffer_fences[current_command_buffer]);
 	if (err != VK_SUCCESS)
 		Sys_Error("vkResetFences failed");
+
+	GL_ProcessHeapFreeLists();
 
 	VkCommandBufferBeginInfo command_buffer_begin_info;
 	memset(&command_buffer_begin_info, 0, sizeof(command_buffer_begin_info));

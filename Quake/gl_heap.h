@@ -48,4 +48,6 @@ VkDeviceSize GL_AllocateFromHeaps(int num_heaps, glheap_t ** heaps, VkDeviceSize
 	VkDeviceSize size, VkDeviceSize alignment, glheap_t ** heap, glheapnode_t ** heap_node, int * num_allocations);
 void GL_FreeFromHeaps(int num_heaps, glheap_t ** heaps, glheap_t * heap, glheapnode_t * heap_node, int * num_allocations);
 
+void GL_ProcessHeapFreeLists();
+
 #endif

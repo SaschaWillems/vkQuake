@@ -203,12 +203,26 @@ VkDeviceSize GL_AllocateFromHeaps(int num_heaps, glheap_t ** heaps, VkDeviceSize
 	return 0;
 }
 
+// For delayed allocations
+typedef struct {
+	int				num_heaps;
+	glheap_t **		heaps;
+	glheap_t *		heap;
+	glheapnode_t *	heap_node;
+	int *			num_allocations;
+} heapfreeentry_t;
+
+static heapfreeentry_t * heap_free_lists[2];
+static int num_free_list_entries[2];
+static int current_heap_free_list_index = 0;
+static int free_list_size = 512;
+
 /*
 ================
-GL_FreeFromHeaps
+GL_FreeFromHeapsInternal
 ================
 */
-void GL_FreeFromHeaps(int num_heaps, glheap_t ** heaps, glheap_t * heap, glheapnode_t * heap_node, int * num_allocations)
+static void GL_FreeFromHeapsInternal(int num_heaps, glheap_t ** heaps, glheap_t * heap, glheapnode_t * heap_node, int * num_allocations)
 {
 	GL_HeapFree(heap, heap_node);
 	if(GL_IsHeapEmpty(heap))
@@ -219,4 +233,52 @@ void GL_FreeFromHeaps(int num_heaps, glheap_t ** heaps, glheap_t * heap, glheapn
 			if(heaps[i] == heap)
 				heaps[i]  = NULL;
 	}
+}
+
+/*
+================
+GL_ProcessHeapFreeLists
+================
+*/
+void GL_ProcessHeapFreeLists()
+{
+	current_heap_free_list_index = (current_heap_free_list_index + 1) % 2;
+	
+	int num_entries = num_free_list_entries[current_heap_free_list_index];
+	for (int i = 0; i < num_entries; ++i)
+	{
+		heapfreeentry_t * entry = &heap_free_lists[current_heap_free_list_index][i];
+		GL_FreeFromHeapsInternal(entry->num_heaps, entry->heaps, entry->heap, entry->heap_node, entry->num_allocations);
+	}
+
+	num_free_list_entries[current_heap_free_list_index] = 0;
+}
+
+/*
+================
+GL_FreeFromHeaps
+================
+*/
+void GL_FreeFromHeaps(int num_heaps, glheap_t ** heaps, glheap_t * heap, glheapnode_t * heap_node, int * num_allocations)
+{
+	if (!heap_free_lists[current_heap_free_list_index])
+		heap_free_lists[current_heap_free_list_index] = malloc(free_list_size * sizeof(heapfreeentry_t));
+
+	int * num_entries = &num_free_list_entries[current_heap_free_list_index];
+	if (*num_entries == free_list_size)
+	{
+		free_list_size *= 2;
+		heap_free_lists[0] = realloc(heap_free_lists[0], free_list_size * sizeof(heapfreeentry_t));
+		heap_free_lists[1] = realloc(heap_free_lists[1], free_list_size * sizeof(heapfreeentry_t));
+	}
+
+	heapfreeentry_t * entry = &heap_free_lists[current_heap_free_list_index][*num_entries];
+	
+	entry->num_heaps = num_heaps;
+	entry->heaps = heaps;
+	entry->heap = heap;
+	entry->heap_node = heap_node;
+	entry->num_allocations = num_allocations;
+
+	*num_entries += 1;
 }
