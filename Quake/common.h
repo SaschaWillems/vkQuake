@@ -25,6 +25,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // comndef.h  -- general definitions
 
+#ifdef __ANDROID__
+#include "android/asset_manager.h"
+#endif
+
 #if defined(_WIN32)
 #ifdef _MSC_VER
 #  pragma warning(disable:4244)
@@ -201,7 +205,11 @@ typedef struct
 typedef struct pack_s
 {
 	char	filename[MAX_OSPATH];
+#ifdef __ANDROID__
+	AAsset * handle;
+#else
 	int		handle;
+#endif
 	int		numfiles;
 	packfile_t	*files;
 } pack_t;
@@ -226,11 +234,24 @@ extern	char	com_basedir[MAX_OSPATH];
 extern	char	com_gamedir[MAX_OSPATH];
 extern	int	file_from_pak;	// global indicating that file came from a pak
 
+#ifdef __ANDOID__
+//todo: naming
+AAsset *android_seek_to_file_in_pak(const char *filename, int *filelen);
+#endif
+
 void COM_WriteFile (const char *filename, const void *data, int len);
+#ifdef __ANDROID__
+int COM_OpenFile(const char *filename, AAsset *handle, unsigned int *path_id);
+#else
 int COM_OpenFile (const char *filename, int *handle, unsigned int *path_id);
+#endif
 int COM_FOpenFile (const char *filename, FILE **file, unsigned int *path_id);
 qboolean COM_FileExists (const char *filename, unsigned int *path_id);
+#ifdef __ANDROID__
+void COM_CloseFile(AAsset *h);
+#else
 void COM_CloseFile (int h);
+#endif
 
 // these procedures open a file using COM_FindFile and loads it into a proper
 // buffer. the buffer is allocated with a total size of com_filesize + 1. the
@@ -283,6 +304,13 @@ extern struct cvar_s	registered;
 extern qboolean		standard_quake, rogue, hipnotic;
 extern qboolean		fitzmode;
 	/* if true, run in fitzquake mode disabling custom quakespasm hacks */
+
+#ifdef __ANDROID__
+#include <android/asset_manager.h>
+#include <android_native_app_glue.h>
+extern struct android_app* android_app;
+extern qboolean prepared;
+#endif
 
 #endif	/* _Q_COMMON_H */
 

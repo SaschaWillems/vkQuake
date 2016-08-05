@@ -79,6 +79,12 @@ static unsigned short pop[] =
 	0x0000,0x0000,0x0000,0x0000,0x6400,0x0000,0x0000,0x0000
 };
 
+#ifdef __ANDROID__
+// Global android application state
+struct android_app* android_app;
+qboolean prepared = false;
+#endif
+
 /*
 
 All of Quake's data access is through a hierchal file system, but the contents
@@ -1213,6 +1219,10 @@ where the given parameter apears, or 0 if not present
 */
 int COM_CheckParm (const char *parm)
 {
+#ifdef __ANDROID
+	// No command line args for Androids
+	return 0;
+#else
 	int		i;
 
 	for (i = 1; i < com_argc; i++)
@@ -1224,6 +1234,7 @@ int COM_CheckParm (const char *parm)
 	}
 
 	return 0;
+#endif
 }
 
 /*
@@ -1238,13 +1249,21 @@ being registered.
 */
 static void COM_CheckRegistered (void)
 {
+#ifdef __ANDROID__
+	AAsset *asset;
+#else		
 	int		h;
+#endif	
 	unsigned short	check[128];
 	int		i;
 
-	COM_OpenFile("gfx/pop.lmp", &h, NULL);
+#ifdef __ANDROID__
+	int ret = COM_OpenFile("gfx/pop.lmp", asset, NULL);
+#else		
+	int ret = COM_OpenFile("gfx/pop.lmp", &h, NULL);
+#endif
 
-	if (h == -1)
+	if (ret == -1)
 	{
 		Cvar_SetROM ("registered", "0");
 		Con_Printf ("Playing shareware version.\n");
@@ -1253,6 +1272,9 @@ static void COM_CheckRegistered (void)
 		return;
 	}
 
+#ifdef __ANDROID__
+	//Sys_FileRead (asset, check, sizeof(check));
+#else
 	Sys_FileRead (h, check, sizeof(check));
 	COM_CloseFile (h);
 
@@ -1267,6 +1289,9 @@ static void COM_CheckRegistered (void)
 		if (com_cmdline[i]!= ' ')
 			break;
 	}
+#endif
+
+	Sys_Printf("yay!");	
 
 	Cvar_SetROM ("cmdline", &com_cmdline[i]);
 	Cvar_SetROM ("registered", "1");
@@ -1560,6 +1585,64 @@ If neither of file or handle is set, this
 can be used for detecting a file's presence.
 ===========
 */
+#ifdef __ANDROID__
+static int COM_FindFile(const char *filename, AAsset *handle, FILE **file, unsigned int *path_id)
+{
+	searchpath_t	*search;
+	char		netpath[MAX_OSPATH];
+	pack_t		*pak;
+	int		i, findtime;
+
+	if (file && handle)
+		Sys_Error("COM_FindFile: both handle and file set");
+
+	file_from_pak = 0;
+
+	for (search = com_searchpaths; search; search = search->next)
+	{
+		if (search->pack)	/* look through all the pak file elements */
+		{
+			pak = search->pack;
+			for (i = 0; i < pak->numfiles; i++)
+			{				
+				if (strcmp(pak->files[i].name, filename) != 0)
+					continue;
+				// found it!
+				com_filesize = pak->files[i].filelen;
+				file_from_pak = 1;
+				if (path_id)
+					*path_id = search->path_id;
+				if (handle)
+				{
+					handle = pak->handle;
+					Sys_FileSeek(pak->handle, pak->files[i].filepos);
+					return com_filesize;
+				}
+				else if (file)
+				{ /* open a new file on the pakfile */
+					*file = fopen(pak->filename, "rb");
+					if (*file)
+						fseek(*file, pak->files[i].filepos, SEEK_SET);
+					return com_filesize;
+				}
+				else /* for COM_FileExists() */
+				{
+					return com_filesize;
+				}
+			}
+		}
+	}
+	/*
+	if (handle)
+		*handle = -1;
+	*/
+	if (file)
+		*file = NULL;
+	com_filesize = -1;
+	Sys_Printf("com_filesize %i", com_filesize);
+	return com_filesize;
+}
+#else
 static int COM_FindFile (const char *filename, int *handle, FILE **file,
 							unsigned int *path_id)
 {
@@ -1658,6 +1741,7 @@ static int COM_FindFile (const char *filename, int *handle, FILE **file,
 	com_filesize = -1;
 	return com_filesize;
 }
+#endif
 
 
 /*
@@ -1669,8 +1753,13 @@ Returns whether the file is found in the quake filesystem.
 */
 qboolean COM_FileExists (const char *filename, unsigned int *path_id)
 {
+#ifdef __ANDROID__
+	int ret = COM_FindFile(filename, NULL, NULL, path_id);
+	return (ret == -1) ? false : true;
+#else
 	int ret = COM_FindFile (filename, NULL, NULL, path_id);
 	return (ret == -1) ? false : true;
+#endif
 }
 
 /*
@@ -1682,10 +1771,17 @@ returns a handle and a length
 it may actually be inside a pak file
 ===========
 */
+#ifdef __ANDROID__
+int COM_OpenFile(const char *filename, AAsset *handle, unsigned int *path_id)
+{
+	return COM_FindFile(filename, handle, NULL, path_id);
+}
+#else
 int COM_OpenFile (const char *filename, int *handle, unsigned int *path_id)
 {
 	return COM_FindFile (filename, handle, NULL, path_id);
 }
+#endif
 
 /*
 ===========
@@ -1707,6 +1803,12 @@ COM_CloseFile
 If it is a pak file handle, don't really close it
 ============
 */
+#ifdef __ANDROID__
+void COM_CloseFile(AAsset *h)
+{
+	AAsset_close(h);
+}
+#else
 void COM_CloseFile (int h)
 {
 	searchpath_t	*s;
@@ -1717,6 +1819,7 @@ void COM_CloseFile (int h)
 
 	Sys_FileClose (h);
 }
+#endif
 
 
 /*
@@ -1740,17 +1843,73 @@ static int	loadsize;
 
 byte *COM_LoadFile (const char *path, int usehunk, unsigned int *path_id)
 {
+#ifdef __ANDROID__
+	AAsset *h;
+	qboolean found = false;
+#else
 	int		h;
+#endif
 	byte	*buf;
 	char	base[32];
 	int		len;
 
 	buf = NULL;	// quiet compiler warning
 
+	Sys_Printf("COM_LoadFile %s", path);
+
 // look for it in the filesystem or pack files
+#ifdef __ANDROID__
+	searchpath_t	*search;
+	char		netpath[MAX_OSPATH];
+	pack_t		*pak;
+	int		i;
+
+	file_from_pak = 0;
+
+	for (search = com_searchpaths; search; search = search->next)
+	{
+		if (search->pack)	/* look through all the pak file elements */
+		{
+			pak = search->pack;
+			for (i = 0; i < pak->numfiles; i++)
+			{
+				if (strcmp(pak->files[i].name, path) != 0)
+					continue;
+				// found it!
+				Sys_Printf("found it");
+				com_filesize = pak->files[i].filelen;
+				file_from_pak = 1;
+				if (path_id)
+					*path_id = search->path_id;
+				//if (h)
+				Sys_Printf("open via handle %d", pak->handle);
+				h = pak->handle;
+				Sys_FileSeek(h, pak->files[i].filepos);
+				len = com_filesize;
+				found = true;
+			}
+		}
+	}
+
+	if (!found)
+	{
+		h = AAssetManager_open(android_app->activity->assetManager, path, AASSET_MODE_STREAMING);
+		if (h)
+		{
+			len = AAsset_getLength(h);
+			Sys_Printf("asset %s len %d", path, len);
+			found = true;
+		}
+	}
+	
+	if (!found)
+		return NULL;
+
+#else
 	len = COM_OpenFile (path, &h, path_id);
 	if (h == -1)
 		return NULL;
+#endif
 
 // extract the filename base name for hunk tag
 	COM_FileBase (path, base, sizeof(base));
@@ -1788,7 +1947,9 @@ byte *COM_LoadFile (const char *path, int usehunk, unsigned int *path_id)
 	((byte *)buf)[len] = 0;
 
 	Sys_FileRead (h, buf, len);
+#ifndef __ANDROID__
 	COM_CloseFile (h);
+#endif
 
 	return buf;
 }
@@ -1850,12 +2011,22 @@ static pack_t *COM_LoadPackFile (const char *packfile)
 	packfile_t	*newfiles;
 	int		numpackfiles;
 	pack_t		*pack;
+#ifdef __ANDROID__
+	AAsset *packhandle;
+#else
 	int		packhandle;
+#endif
 	dpackfile_t	info[MAX_FILES_IN_PACK];
 	unsigned short	crc;
 
+#ifdef __ANDROID__
+	packhandle = Sys_FileOpenRead(packfile);
+	if (!packhandle)
+		return NULL;
+#else
 	if (Sys_FileOpenRead (packfile, &packhandle) == -1)
 		return NULL;
+#endif
 
 	Sys_FileRead (packhandle, (void *)&header, sizeof(header));
 	if (header.id[0] != 'P' || header.id[1] != 'A' || header.id[2] != 'C' || header.id[3] != 'K')
@@ -2358,3 +2529,35 @@ long FS_filelength (fshandle_t *fh)
 	return fh->length;
 }
 
+#ifdef __ANDROID__
+AAsset *android_seek_to_file_in_pak(const char *filename, int *filelen)
+{
+	searchpath_t	*search;
+	char		netpath[MAX_OSPATH];
+	pack_t		*pak;
+	int		i;
+
+	file_from_pak = 0;
+
+	for (search = com_searchpaths; search; search = search->next)
+	{
+		if (search->pack)	/* look through all the pak file elements */
+		{
+			pak = search->pack;
+			for (i = 0; i < pak->numfiles; i++)
+			{
+				if (strcmp(pak->files[i].name, filename) != 0)
+					continue;
+				Sys_Printf("found it");
+				*filelen = pak->files[i].filelen;
+				file_from_pak = 1;
+				Sys_Printf("open via handle %d", pak->handle);
+				Sys_FileSeek(pak->handle, pak->files[i].filepos);
+				return pak->handle;
+			}
+		}
+	}
+
+	return NULL;
+}
+#endif
