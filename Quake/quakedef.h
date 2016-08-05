@@ -228,6 +228,10 @@ typedef struct
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
+#ifdef __ANDROID__
+#include "vulkanandroid.h"
+#endif
+
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_platform.h>
 

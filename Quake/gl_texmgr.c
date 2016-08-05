@@ -353,6 +353,16 @@ void TexMgr_LoadPalette (void)
 {
 	byte *pal, *src, *dst;
 	int i, mark;
+
+#ifdef __ANDROID__
+ 	int len;
+ 	AAsset *asset = android_seek_to_file_in_pak("gfx/palette.lmp", &len);
+ 	if (!asset)
+ 		Sys_Error("Couldn't load gfx/palette.lmp");
+	mark = Hunk_LowMark();
+	pal = (byte *)Hunk_Alloc(768);
+	Sys_FileRead(asset, pal, 768);
+#else
 	FILE *f;
 
 	COM_FOpenFile ("gfx/palette.lmp", &f, NULL);
@@ -363,6 +373,7 @@ void TexMgr_LoadPalette (void)
 	pal = (byte *) Hunk_Alloc (768);
 	fread (pal, 1, 768, f);
 	fclose(f);
+#endif
 
 	//standard palette, 255 is transparent
 	dst = (byte *)d_8to24table;

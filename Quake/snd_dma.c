@@ -222,7 +222,13 @@ void S_Init (void)
 
 	snd_initialized = true;
 
+#ifdef __ANDROID__
+	//todo: SDL sound does not work on Android
+	sound_started = 0;
+	return;
+#else
 	S_Startup ();
+#endif
 	if (sound_started == 0)
 		return;
 

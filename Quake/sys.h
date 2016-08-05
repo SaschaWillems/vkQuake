@@ -32,6 +32,13 @@ void Sys_Init (void);
 
 // returns the file size or -1 if file is not present.
 // the file should be in BINARY mode for stupid OSs that care
+#ifdef __ANDROID__
+// Note: No leading ./
+AAsset* Sys_FileOpenRead(const char *path);
+int Sys_FileRead(AAsset *asset, void *dest, int count);
+void Sys_FileClose(AAsset *asset);
+void Sys_FileSeek(AAsset *asset, int position);
+#else
 int Sys_FileOpenRead (const char *path, int *hndl);
 
 int Sys_FileOpenWrite (const char *path);
@@ -41,6 +48,7 @@ int Sys_FileRead (int handle, void *dest, int count);
 int Sys_FileWrite (int handle,const void *data, int count);
 int Sys_FileTime (const char *path);
 void Sys_mkdir (const char *path);
+#endif
 
 //
 // system IO

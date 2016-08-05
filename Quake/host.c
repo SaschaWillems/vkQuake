@@ -690,12 +690,15 @@ void _Host_Frame (float time)
 
 // get new key events
 	Key_UpdateForDest ();
+#ifndef __ANDROID__
+	//todo: handled in main loop for now
 	IN_UpdateInputMode ();
 	Sys_SendKeyEvents ();
 
 // allow mice or other external controllers to add commands
 	IN_Commands ();
 
+#endif
 // process console commands
 	Cbuf_Execute ();
 
@@ -816,6 +819,9 @@ void Host_Init (void)
 		minimum_memory = MINIMUM_MEMORY;
 	else	minimum_memory = MINIMUM_MEMORY_LEVELPAK;
 
+#ifdef __ANDROID__
+	// Always use max. mem size on Android
+#else
 	if (COM_CheckParm ("-minmemory"))
 		host_parms->memsize = minimum_memory;
 
@@ -824,6 +830,7 @@ void Host_Init (void)
 
 	com_argc = host_parms->argc;
 	com_argv = host_parms->argv;
+#endif
 
 	Memory_Init (host_parms->membase, host_parms->memsize);
 	Cbuf_Init ();
@@ -860,14 +867,18 @@ void Host_Init (void)
 		Modlist_Init (); //johnfitz
 		DemoList_Init (); //ericw
 		VID_Init ();
+#ifndef __ANDROID__
 		IN_Init ();
+#endif
 		TexMgr_Init (); //johnfitz
 		Draw_Init ();
 		SCR_Init ();
 		R_Init ();
+#ifndef __ANDROID__
 		S_Init ();
 		CDAudio_Init ();
 		BGM_Init();
+#endif
 		Sbar_Init ();
 		CL_Init ();
 	}
