@@ -1237,6 +1237,39 @@ int COM_CheckParm (const char *parm)
 #endif
 }
 
+#ifdef __ANDROID__
+AAsset *android_seek_to_file_in_pak(const char *filename, int *filelen)
+{
+	searchpath_t	*search;
+	char		netpath[MAX_OSPATH];
+	pack_t		*pak;
+	int		i;
+
+	file_from_pak = 0;
+
+	for (search = com_searchpaths; search; search = search->next)
+	{
+		if (search->pack)	/* look through all the pak file elements */
+		{
+			pak = search->pack;
+			for (i = 0; i < pak->numfiles; i++)
+			{
+				if (strcmp(pak->files[i].name, filename) != 0)
+					continue;
+				Sys_Printf("found it");
+				*filelen = pak->files[i].filelen;
+				file_from_pak = 1;
+				Sys_Printf("open via handle %d", pak->handle);
+				Sys_FileSeek(pak->handle, pak->files[i].filepos);
+				return pak->handle;
+			}
+		}
+	}
+
+	return NULL;
+}
+#endif
+
 /*
 ================
 COM_CheckRegistered
@@ -1271,12 +1304,14 @@ static void COM_CheckRegistered (void)
 			Sys_Error ("You must have the registered version to use modified games");
 		return;
 	}
-
 #ifdef __ANDROID__
-	//Sys_FileRead (asset, check, sizeof(check));
+	int len;
+	asset = android_seek_to_file_in_pak("gfx/pop.lmp", &len);
+	Sys_FileRead (asset, check, sizeof(check));
 #else
 	Sys_FileRead (h, check, sizeof(check));
 	COM_CloseFile (h);
+#endif	
 
 	for (i = 0; i < 128; i++)
 	{
@@ -1284,16 +1319,15 @@ static void COM_CheckRegistered (void)
 			Sys_Error ("Corrupted data file.");
 	}
 
+#ifndef __ANDROID__
 	for (i = 0; com_cmdline[i]; i++)
 	{
 		if (com_cmdline[i]!= ' ')
 			break;
 	}
+	Cvar_SetROM ("cmdline", &com_cmdline[i]);
 #endif
 
-	Sys_Printf("yay!");	
-
-	Cvar_SetROM ("cmdline", &com_cmdline[i]);
 	Cvar_SetROM ("registered", "1");
 	Con_Printf ("Playing registered version.\n");
 }
@@ -1613,19 +1647,19 @@ static int COM_FindFile(const char *filename, AAsset *handle, FILE **file, unsig
 				if (path_id)
 					*path_id = search->path_id;
 				if (handle)
-				{
+				{					
 					handle = pak->handle;
 					Sys_FileSeek(pak->handle, pak->files[i].filepos);
 					return com_filesize;
 				}
 				else if (file)
-				{ /* open a new file on the pakfile */
+				{
 					*file = fopen(pak->filename, "rb");
 					if (*file)
 						fseek(*file, pak->files[i].filepos, SEEK_SET);
 					return com_filesize;
 				}
-				else /* for COM_FileExists() */
+				else
 				{
 					return com_filesize;
 				}
@@ -2528,36 +2562,3 @@ long FS_filelength (fshandle_t *fh)
 	}
 	return fh->length;
 }
-
-#ifdef __ANDROID__
-AAsset *android_seek_to_file_in_pak(const char *filename, int *filelen)
-{
-	searchpath_t	*search;
-	char		netpath[MAX_OSPATH];
-	pack_t		*pak;
-	int		i;
-
-	file_from_pak = 0;
-
-	for (search = com_searchpaths; search; search = search->next)
-	{
-		if (search->pack)	/* look through all the pak file elements */
-		{
-			pak = search->pack;
-			for (i = 0; i < pak->numfiles; i++)
-			{
-				if (strcmp(pak->files[i].name, filename) != 0)
-					continue;
-				Sys_Printf("found it");
-				*filelen = pak->files[i].filelen;
-				file_from_pak = 1;
-				Sys_Printf("open via handle %d", pak->handle);
-				Sys_FileSeek(pak->handle, pak->files[i].filepos);
-				return pak->handle;
-			}
-		}
-	}
-
-	return NULL;
-}
-#endif
