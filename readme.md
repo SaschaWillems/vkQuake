@@ -76,6 +76,10 @@ cd vkQuake/Quake
 make
 ~~~
 
+## Android 
+
+Building for Android requires the [Android NDK](http://developer.android.com/ndk/downloads/index.html) to be installed. See the [Android Readme](/Android/README.md) for details on how to build for this platform.
+
 # Usage
 
 Quake has 4 episodes that are split into 2 files:
@@ -92,6 +96,7 @@ next to that and copy `pak0.pak` there, e.g.:
 
 * Windows: `Windows\VisualStudio\Build-vkQuake\x64\Release\id1\pak0.pak`
 * Ubuntu: `Quake\id1\pak0.pak`
+* Android: `.pak` files will be packaged into the `vkQuake.apk` so they need to be placed in the asset folder before building
 
 Then vkQuake is ready to play.
 
