@@ -33,7 +33,6 @@ Config files will also be loaded from the apk as assets. The asset folder includ
 - Sound
 - Keyboard input
 - Touch input
-- Multiplayer
 - Saving/loading games and config 
 
 ## Building
