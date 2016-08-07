@@ -398,6 +398,8 @@ R_StagingAllocate
 */
 byte * R_StagingAllocate(int size, VkCommandBuffer * command_buffer, VkBuffer * buffer, int * buffer_offset)
 {
+	vulkan_globals.device_idle = false;
+
 	if (size > (STAGING_BUFFER_SIZE_KB * 1024))
 		Sys_Error("Cannot allocate staging buffer space");
 
@@ -1450,12 +1452,19 @@ void R_CreatePipelines()
 	if (err != VK_SUCCESS)
 		Sys_Error("vkCreateGraphicsPipelines failed");
 
+	depth_stencil_state_create_info.depthWriteEnable = VK_FALSE;
+	blend_attachment_state.blendEnable = VK_TRUE;
+
+	err = vkCreateGraphicsPipelines(vulkan_globals.device, VK_NULL_HANDLE, 1, &pipeline_create_info, NULL, &vulkan_globals.alias_blend_pipeline);
+	if (err != VK_SUCCESS)
+		Sys_Error("vkCreateGraphicsPipelines failed");
+
 	//================
 	// Postprocess pipeline
 	//================
 	rasterization_state_create_info.cullMode = VK_CULL_MODE_NONE;
 	depth_stencil_state_create_info.depthTestEnable = VK_FALSE;
-	depth_stencil_state_create_info.depthWriteEnable = VK_FALSE;
+	blend_attachment_state.blendEnable = VK_FALSE;
 
 	vertex_input_state_create_info.vertexAttributeDescriptionCount = 0;
 	vertex_input_state_create_info.pVertexAttributeDescriptions = NULL;
@@ -1465,6 +1474,7 @@ void R_CreatePipelines()
 	shader_stages[0].module = postprocess_vert_module;
 	shader_stages[1].module = postprocess_frag_module;
 	pipeline_create_info.layout = vulkan_globals.postprocess_pipeline_layout;
+	pipeline_create_info.subpass = 1;
 
 	err = vkCreateGraphicsPipelines(vulkan_globals.device, VK_NULL_HANDLE, 1, &pipeline_create_info, NULL, &vulkan_globals.postprocess_pipeline);
 	if (err != VK_SUCCESS)

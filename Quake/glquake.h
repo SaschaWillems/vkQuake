@@ -111,6 +111,7 @@ typedef enum {
 typedef struct
 {
 	VkDevice							device;
+	qboolean							device_idle;
 	VkQueue								queue;
 	VkCommandBuffer						command_buffer;
 	VkClearValue						color_clear_value;
@@ -143,6 +144,7 @@ typedef struct
 	VkPipeline							sky_layer_pipeline;
 	VkPipelineLayout					sky_layer_pipeline_layout;
 	VkPipeline							alias_pipeline;
+	VkPipeline							alias_blend_pipeline;
 	VkPipelineLayout					alias_pipeline_layout;
 	VkPipeline							postprocess_pipeline;
 	VkPipelineLayout					postprocess_pipeline_layout;
