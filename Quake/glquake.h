@@ -119,6 +119,7 @@ typedef struct
 	VkPhysicalDeviceProperties			device_properties;
 	VkPhysicalDeviceMemoryProperties	memory_properties;
 	uint32_t							gfx_queue_family_index;
+	VkFormat							depth_format;
 
 	// Render passes
 	VkRenderPass						main_render_pass;
@@ -158,6 +159,8 @@ typedef struct
 	// Samplers
 	VkSampler							point_sampler;
 	VkSampler							linear_sampler;
+	VkSampler							point_aniso_sampler;
+	VkSampler							linear_aniso_sampler;
 
 	// Matrices
 	float								projection_matrix[16];

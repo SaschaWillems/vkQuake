@@ -26,11 +26,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "gl_heap.h"
 
-static cvar_t	gl_texture_anisotropy = {"gl_texture_anisotropy", "1", CVAR_ARCHIVE};
 static cvar_t	gl_max_size = {"gl_max_size", "0", CVAR_NONE};
 static cvar_t	gl_picmip = {"gl_picmip", "0", CVAR_NONE};
 
 extern cvar_t vid_filter;
+extern cvar_t vid_anisotropic;
 
 #define	MAX_MIPS 16
 static int numgltextures;
@@ -72,12 +72,15 @@ static void TexMgr_SetFilterModes (gltexture_t *glt)
 	image_info.imageView = glt->image_view;
 	image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+	VkSampler point_sampler = (vid_anisotropic.value == 1) ? vulkan_globals.point_aniso_sampler : vulkan_globals.point_sampler;
+	VkSampler linear_sampler = (vid_anisotropic.value == 1) ? vulkan_globals.linear_aniso_sampler : vulkan_globals.linear_sampler;
+
 	if (glt->flags & TEXPREF_NEAREST)
-		image_info.sampler = vulkan_globals.point_sampler;
+		image_info.sampler = point_sampler;
 	else if (glt->flags & TEXPREF_LINEAR)
-		image_info.sampler = vulkan_globals.linear_sampler;
+		image_info.sampler = linear_sampler;
 	else
-		image_info.sampler = (vid_filter.value == 1) ? vulkan_globals.point_sampler : vulkan_globals.linear_sampler;
+		image_info.sampler = (vid_filter.value == 1) ? point_sampler : linear_sampler;
 
 	VkWriteDescriptorSet texture_write;
 	memset(&texture_write, 0, sizeof(texture_write));
@@ -105,36 +108,6 @@ void TexMgr_UpdateTextureDescriptorSets(void)
 
 	for (glt = active_gltextures; glt; glt = glt->next)
 		TexMgr_SetFilterModes (glt);
-}
-
-/*
-===============
-TexMgr_Anisotropy_f -- called when gl_texture_anisotropy changes
-===============
-*/
-static void TexMgr_Anisotropy_f (cvar_t *var)
-{
-	/*if (gl_texture_anisotropy.value < 1)
-	{
-		Cvar_SetQuick (&gl_texture_anisotropy, "1");
-	}
-	else if (gl_texture_anisotropy.value > gl_max_anisotropy)
-	{
-		Cvar_SetValueQuick (&gl_texture_anisotropy, gl_max_anisotropy);
-	}
-	else
-	{
-		gltexture_t	*glt;
-		for (glt = active_gltextures; glt; glt = glt->next)
-		{
-		    if (glt->flags & TEXPREF_MIPMAP) {
-			GL_Bind (glt);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, glmodes[glmode_idx].magfilter);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, glmodes[glmode_idx].minfilter);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, gl_texture_anisotropy.value);
-		    }
-		}
-	}*/
 }
 
 /*
@@ -474,8 +447,6 @@ void TexMgr_Init (void)
 
 	Cvar_RegisterVariable (&gl_max_size);
 	Cvar_RegisterVariable (&gl_picmip);
-	Cvar_RegisterVariable (&gl_texture_anisotropy);
-	Cvar_SetCallback (&gl_texture_anisotropy, &TexMgr_Anisotropy_f);
 	Cmd_AddCommand ("imagelist", &TexMgr_Imagelist_f);
 
 	// load notexture images
@@ -905,12 +876,14 @@ static void TexMgr_LoadImage32 (gltexture_t *glt, unsigned *data)
 	}
 
 	int num_mips = (glt->flags & TEXPREF_MIPMAP) ? TexMgr_DeriveNumMips(glt->width, glt->height) : 1;
+
+	const qboolean warp_image = (glt->flags & TEXPREF_WARPIMAGE);
+	if (warp_image)
+		num_mips = WARPIMAGEMIPS;
 	
 	// Check for sanity. This should never be reached.
 	if (num_mips > MAX_MIPS)
 		Sys_Error("Texture has over %d mips", MAX_MIPS);
-
-	const qboolean warp_image = (glt->flags & TEXPREF_WARPIMAGE);
 
 	VkResult err;
 
@@ -926,7 +899,7 @@ static void TexMgr_LoadImage32 (gltexture_t *glt, unsigned *data)
 	image_create_info.arrayLayers = 1;
 	image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 	image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-	image_create_info.usage = warp_image ? (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT) : (VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+	image_create_info.usage = warp_image ? (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT) : (VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 	image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -979,12 +952,17 @@ static void TexMgr_LoadImage32 (gltexture_t *glt, unsigned *data)
 	// Don't upload data for warp image, will be updated by rendering
 	if (warp_image)
 	{
+		image_view_create_info.subresourceRange.levelCount = 1;
+		err = vkCreateImageView(vulkan_globals.device, &image_view_create_info, NULL, &glt->target_image_view);
+		if (err != VK_SUCCESS)
+			Sys_Error("vkCreateImageView failed");
+
 		VkFramebufferCreateInfo framebuffer_create_info;
 		memset(&framebuffer_create_info, 0, sizeof(framebuffer_create_info));
 		framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebuffer_create_info.renderPass = vulkan_globals.warp_render_pass;
 		framebuffer_create_info.attachmentCount = 1;
-		framebuffer_create_info.pAttachments = &glt->image_view;
+		framebuffer_create_info.pAttachments = &glt->target_image_view;
 		framebuffer_create_info.width = glt->width;
 		framebuffer_create_info.height = glt->height;
 		framebuffer_create_info.layers = 1;
@@ -994,6 +972,8 @@ static void TexMgr_LoadImage32 (gltexture_t *glt, unsigned *data)
 
 		return;
 	}
+	else
+		glt->target_image_view = NULL;
 
 	glt->frame_buffer = VK_NULL_HANDLE;
 
@@ -1449,6 +1429,8 @@ static void GL_DeleteTexture (gltexture_t *texture)
 
 	if (texture->frame_buffer != VK_NULL_HANDLE)
 		vkDestroyFramebuffer(vulkan_globals.device, texture->frame_buffer, NULL);
+	if(texture->target_image_view)
+		vkDestroyImageView(vulkan_globals.device, texture->target_image_view, NULL);
 	vkDestroyImageView(vulkan_globals.device, texture->image_view, NULL);
 	vkDestroyImage(vulkan_globals.device, texture->image, NULL);
 	vkFreeDescriptorSets(vulkan_globals.device, vulkan_globals.descriptor_pool, 1, &texture->descriptor_set);
@@ -1456,6 +1438,7 @@ static void GL_DeleteTexture (gltexture_t *texture)
 	GL_FreeFromHeaps(TEXTURE_MAX_HEAPS, texmgr_heaps, texture->heap, texture->heap_node, &num_vulkan_tex_allocations);
 
 	texture->frame_buffer = VK_NULL_HANDLE;
+	texture->target_image_view = VK_NULL_HANDLE;
 	texture->image_view = VK_NULL_HANDLE;
 	texture->image = VK_NULL_HANDLE;
 	texture->heap = NULL;

@@ -40,7 +40,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define NUM_COMMAND_BUFFERS 2
 #define MAX_SWAP_CHAIN_IMAGES 8
-#define DEPTH_FORMAT VK_FORMAT_D16_UNORM
 #define COLOR_BUFFER_FORMAT VK_FORMAT_R8G8B8A8_UNORM;
 
 typedef struct {
@@ -90,6 +89,7 @@ static cvar_t	vid_fsaa = {"vid_fsaa", "0", CVAR_ARCHIVE}; // QuakeSpasm
 static cvar_t	vid_desktopfullscreen = {"vid_desktopfullscreen", "0", CVAR_ARCHIVE}; // QuakeSpasm
 static cvar_t	vid_borderless = {"vid_borderless", "0", CVAR_ARCHIVE}; // QuakeSpasm
 cvar_t	vid_filter = {"vid_filter", "0", CVAR_ARCHIVE};
+cvar_t	vid_anisotropic = {"vid_anisotropic", "0", CVAR_ARCHIVE};
 
 cvar_t		vid_gamma = {"gamma", "1", CVAR_ARCHIVE}; //johnfitz -- moved here from view.c
 cvar_t		vid_contrast = {"contrast", "1", CVAR_ARCHIVE}; //QuakeSpasm, MarkV
@@ -803,6 +803,20 @@ static void GL_InitDevice( void )
 	GET_DEVICE_PROC_ADDR(vulkan_globals.device, QueuePresentKHR);
 
 	vkGetDeviceQueue(vulkan_globals.device, vulkan_globals.gfx_queue_family_index, 0, &vulkan_globals.queue);
+
+	// Find depth format
+	VkFormatProperties format_properties;
+
+	vkGetPhysicalDeviceFormatProperties(vulkan_physical_device, VK_FORMAT_X8_D24_UNORM_PACK32, &format_properties);
+	qboolean x8_d24_support = (format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0;
+	vkGetPhysicalDeviceFormatProperties(vulkan_physical_device, VK_FORMAT_D32_SFLOAT, &format_properties);
+	qboolean d32_support = (format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0;
+
+	vulkan_globals.depth_format = VK_FORMAT_D16_UNORM;
+	if (x8_d24_support)
+		vulkan_globals.depth_format = VK_FORMAT_X8_D24_UNORM_PACK32;
+	else if(d32_support)
+		vulkan_globals.depth_format = VK_FORMAT_D32_SFLOAT;
 }
 
 /*
@@ -873,7 +887,7 @@ static void GL_CreateRenderPasses()
 	attachment_descriptions[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	attachment_descriptions[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	attachment_descriptions[1].samples = VK_SAMPLE_COUNT_1_BIT;
-	attachment_descriptions[1].format = DEPTH_FORMAT;
+	attachment_descriptions[1].format = vulkan_globals.depth_format;
 	attachment_descriptions[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachment_descriptions[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
@@ -943,7 +957,7 @@ static void GL_CreateRenderPasses()
 	attachment_descriptions[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachment_descriptions[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachment_descriptions[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	attachment_descriptions[0].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	attachment_descriptions[0].finalLayout = VK_IMAGE_LAYOUT_GENERAL;
 	color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkSubpassDescription subpass_description;
@@ -980,7 +994,7 @@ static void GL_CreateDepthBuffer( void )
 	image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	image_create_info.pNext = NULL;
 	image_create_info.imageType = VK_IMAGE_TYPE_2D;
-	image_create_info.format = DEPTH_FORMAT;
+	image_create_info.format = vulkan_globals.depth_format;
 	image_create_info.extent.width = vid.width;
 	image_create_info.extent.height = vid.height;
 	image_create_info.extent.depth = 1;
@@ -1015,7 +1029,7 @@ static void GL_CreateDepthBuffer( void )
 	VkImageViewCreateInfo image_view_create_info;
 	memset(&image_view_create_info, 0, sizeof(image_view_create_info));
 	image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	image_view_create_info.format = DEPTH_FORMAT;
+	image_view_create_info.format = vulkan_globals.depth_format;
 	image_view_create_info.image = depth_buffer;
 	image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 	image_view_create_info.subresourceRange.baseMipLevel = 0;
@@ -1653,6 +1667,7 @@ void	VID_Init (void)
 	Cvar_RegisterVariable (&vid_bpp); //johnfitz
 	Cvar_RegisterVariable (&vid_vsync); //johnfitz
 	Cvar_RegisterVariable (&vid_filter);
+	Cvar_RegisterVariable (&vid_anisotropic);
 	Cvar_RegisterVariable (&vid_fsaa); //QuakeSpasm
 	Cvar_RegisterVariable (&vid_desktopfullscreen); //QuakeSpasm
 	Cvar_RegisterVariable (&vid_borderless); //QuakeSpasm
@@ -1661,6 +1676,7 @@ void	VID_Init (void)
 	Cvar_SetCallback (&vid_height, VID_Changed_f);
 	Cvar_SetCallback (&vid_bpp, VID_Changed_f);
 	Cvar_SetCallback (&vid_filter, VID_FilterChanged_f);
+	Cvar_SetCallback (&vid_anisotropic, VID_FilterChanged_f);
 	Cvar_SetCallback (&vid_vsync, VID_Changed_f);
 	Cvar_SetCallback (&vid_fsaa, VID_FSAA_f);
 	Cvar_SetCallback (&vid_desktopfullscreen, VID_Changed_f);
@@ -1973,6 +1989,7 @@ enum {
 	VID_OPT_FULLSCREEN,
 	VID_OPT_VSYNC,
 	VID_OPT_FILTER,
+	VID_OPT_ANISOTROPY,
 	VID_OPT_TEST,
 	VID_OPT_APPLY,
 	VIDEO_OPTIONS_ITEMS
@@ -2199,6 +2216,9 @@ static void VID_MenuKey (int key)
 		case VID_OPT_FILTER:
 			Cbuf_AddText ("toggle vid_filter\n");
 			break;
+		case VID_OPT_ANISOTROPY:
+			Cbuf_AddText ("toggle vid_anisotropic\n");
+			break;
 		default:
 			break;
 		}
@@ -2222,6 +2242,9 @@ static void VID_MenuKey (int key)
 			break;
 		case VID_OPT_FILTER:
 			Cbuf_AddText ("toggle vid_filter\n");
+			break;
+		case VID_OPT_ANISOTROPY:
+			Cbuf_AddText ("toggle vid_anisotropic\n");
 			break;
 		default:
 			break;
@@ -2247,6 +2270,9 @@ static void VID_MenuKey (int key)
 			break;
 		case VID_OPT_FILTER:
 			Cbuf_AddText ("toggle vid_filter\n");
+			break;
+		case VID_OPT_ANISOTROPY:
+			Cbuf_AddText ("toggle vid_anisotropic\n");
 			break;
 		case VID_OPT_TEST:
 			Cbuf_AddText ("vid_test\n");
@@ -2318,8 +2344,12 @@ static void VID_MenuDraw (void)
 			M_DrawCheckbox (184, y, (int)vid_vsync.value);
 			break;
 		case VID_OPT_FILTER:
-			M_Print (16, y, "      Filter");
+			M_Print (16, y, "            Filter");
 			M_Print (184, y, ((int)vid_filter.value == 0) ? "smooth" : "classic");
+			break;
+		case VID_OPT_ANISOTROPY:
+			M_Print (16, y, "       Anisotropic");
+			M_Print (184, y, ((int)vid_anisotropic.value == 0) ? "off" : "on");
 			break;
 		case VID_OPT_TEST:
 			y += 8; //separate the test and apply items
