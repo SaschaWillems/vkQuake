@@ -52,6 +52,10 @@ unsigned int d_8to24table_pants[256];
 
 static glheap_t * texmgr_heaps[TEXTURE_MAX_HEAPS];
 
+#ifdef _DEBUG
+extern PFN_vkDebugMarkerSetObjectNameEXT fpDebugMarkerSetObjectNameEXT;
+#endif
+
 /*
 ================================================================================
 
@@ -907,6 +911,8 @@ static void TexMgr_LoadImage32 (gltexture_t *glt, unsigned *data)
 	if (err != VK_SUCCESS)
 		Sys_Error("vkCreateImage failed");
 
+	GL_SetObjectName((uint64_t)glt->image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, glt->name);
+
 	VkMemoryRequirements memory_requirements;
 	vkGetImageMemoryRequirements(vulkan_globals.device, glt->image, &memory_requirements);
 
@@ -937,6 +943,8 @@ static void TexMgr_LoadImage32 (gltexture_t *glt, unsigned *data)
 	if (err != VK_SUCCESS)
 		Sys_Error("vkCreateImageView failed");
 
+	GL_SetObjectName((uint64_t)glt->image_view, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, glt->name);
+
 	// Allocate and update descriptor for this texture
 	VkDescriptorSetAllocateInfo descriptor_set_allocate_info;
 	memset(&descriptor_set_allocate_info, 0, sizeof(descriptor_set_allocate_info));
@@ -957,6 +965,8 @@ static void TexMgr_LoadImage32 (gltexture_t *glt, unsigned *data)
 		if (err != VK_SUCCESS)
 			Sys_Error("vkCreateImageView failed");
 
+		GL_SetObjectName((uint64_t)glt->target_image_view, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, glt->name);
+
 		VkFramebufferCreateInfo framebuffer_create_info;
 		memset(&framebuffer_create_info, 0, sizeof(framebuffer_create_info));
 		framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -969,6 +979,8 @@ static void TexMgr_LoadImage32 (gltexture_t *glt, unsigned *data)
 		err = vkCreateFramebuffer(vulkan_globals.device, &framebuffer_create_info, NULL, &glt->frame_buffer);
 		if (err != VK_SUCCESS)
 			Sys_Error("vkCreateFramebuffer failed");
+
+		GL_SetObjectName((uint64_t)glt->frame_buffer, VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, glt->name);
 
 		return;
 	}
