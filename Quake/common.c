@@ -1237,7 +1237,7 @@ int COM_CheckParm (const char *parm)
 #endif
 }
 
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 AAsset *android_seek_to_file_in_pak(const char *filename, int *filelen)
 {
 	searchpath_t	*search;
@@ -1282,7 +1282,7 @@ being registered.
 */
 static void COM_CheckRegistered (void)
 {
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 	AAsset *asset;
 #else		
 	int		h;
@@ -1290,7 +1290,7 @@ static void COM_CheckRegistered (void)
 	unsigned short	check[128];
 	int		i;
 
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 	int ret = COM_OpenFile("gfx/pop.lmp", asset, NULL);
 #else		
 	int ret = COM_OpenFile("gfx/pop.lmp", &h, NULL);
@@ -1304,7 +1304,7 @@ static void COM_CheckRegistered (void)
 			Sys_Error ("You must have the registered version to use modified games");
 		return;
 	}
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 	int len;
 	asset = android_seek_to_file_in_pak("gfx/pop.lmp", &len);
 	Sys_FileRead (asset, check, sizeof(check));
@@ -1619,7 +1619,7 @@ If neither of file or handle is set, this
 can be used for detecting a file's presence.
 ===========
 */
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 static int COM_FindFile(const char *filename, AAsset *handle, FILE **file, unsigned int *path_id)
 {
 	searchpath_t	*search;
@@ -1805,7 +1805,7 @@ returns a handle and a length
 it may actually be inside a pak file
 ===========
 */
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 int COM_OpenFile(const char *filename, AAsset *handle, unsigned int *path_id)
 {
 	return COM_FindFile(filename, handle, NULL, path_id);
@@ -1837,7 +1837,7 @@ COM_CloseFile
 If it is a pak file handle, don't really close it
 ============
 */
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 void COM_CloseFile(AAsset *h)
 {
 	AAsset_close(h);
@@ -1877,7 +1877,7 @@ static int	loadsize;
 
 byte *COM_LoadFile (const char *path, int usehunk, unsigned int *path_id)
 {
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 	AAsset *h;
 	qboolean found = false;
 #else
@@ -1892,7 +1892,7 @@ byte *COM_LoadFile (const char *path, int usehunk, unsigned int *path_id)
 	Sys_Printf("COM_LoadFile %s", path);
 
 // look for it in the filesystem or pack files
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 	searchpath_t	*search;
 	char		netpath[MAX_OSPATH];
 	pack_t		*pak;
@@ -2045,7 +2045,7 @@ static pack_t *COM_LoadPackFile (const char *packfile)
 	packfile_t	*newfiles;
 	int		numpackfiles;
 	pack_t		*pack;
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 	AAsset *packhandle;
 #else
 	int		packhandle;
@@ -2053,7 +2053,7 @@ static pack_t *COM_LoadPackFile (const char *packfile)
 	dpackfile_t	info[MAX_FILES_IN_PACK];
 	unsigned short	crc;
 
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 	packhandle = Sys_FileOpenRead(packfile);
 	if (!packhandle)
 		return NULL;
@@ -2346,6 +2346,10 @@ void COM_InitFilesystem (void) //johnfitz -- modified based on topaz's tutorial
 	if (j < 1) Sys_Error("Bad argument to -basedir");
 	if ((com_basedir[j-1] == '\\') || (com_basedir[j-1] == '/'))
 		com_basedir[j-1] = 0;
+
+#ifndef __ANDROID_LOAD_FROM_ASSETS__
+	q_strlcpy (com_basedir, "/sdcard/", sizeof("/sdcard/"));
+#endif		
 
 	// start up with GAMENAME by default (id1)
 	COM_AddGameDirectory (com_basedir, GAMENAME);

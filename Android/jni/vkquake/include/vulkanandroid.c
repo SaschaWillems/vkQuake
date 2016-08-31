@@ -25,6 +25,7 @@ PFN_vkGetPhysicalDeviceFeatures vkGetPhysicalDeviceFeatures;
 PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties;
 PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties;
 PFN_vkEnumerateInstanceExtensionProperties vkEnumerateInstanceExtensionProperties;
+PFN_vkGetPhysicalDeviceImageFormatProperties vkGetPhysicalDeviceImageFormatProperties;
 PFN_vkEnumerateInstanceLayerProperties vkEnumerateInstanceLayerProperties;
 PFN_vkCmdPipelineBarrier vkCmdPipelineBarrier;
 PFN_vkCreateShaderModule vkCreateShaderModule;
@@ -154,6 +155,7 @@ void loadVulkanFunctions(VkInstance instance)
 	vkCreateDevice = (PFN_vkCreateDevice)(vkGetInstanceProcAddr(instance, "vkCreateDevice"));
 	vkGetPhysicalDeviceFormatProperties = (PFN_vkGetPhysicalDeviceFormatProperties)(vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFormatProperties"));
 	vkGetPhysicalDeviceMemoryProperties = (PFN_vkGetPhysicalDeviceMemoryProperties)(vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceMemoryProperties"));
+	vkGetPhysicalDeviceImageFormatProperties = (PFN_vkGetPhysicalDeviceImageFormatProperties)(vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceImageFormatProperties"));
 
 	vkCmdPipelineBarrier = (PFN_vkCmdPipelineBarrier)(vkGetInstanceProcAddr(instance, "vkCmdPipelineBarrier"));
 	vkCreateShaderModule = (PFN_vkCreateShaderModule)(vkGetInstanceProcAddr(instance, "vkCreateShaderModule"));

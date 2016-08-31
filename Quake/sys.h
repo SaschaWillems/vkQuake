@@ -32,7 +32,7 @@ void Sys_Init (void);
 
 // returns the file size or -1 if file is not present.
 // the file should be in BINARY mode for stupid OSs that care
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
 // Note: No leading ./
 AAsset* Sys_FileOpenRead(const char *path);
 int Sys_FileRead(AAsset *asset, void *dest, int count);

@@ -331,7 +331,7 @@ void TexMgr_LoadPalette (void)
 	byte *pal, *src, *dst;
 	int i, mark;
 
-#ifdef __ANDROID__
+#ifdef __ANDROID_LOAD_FROM_ASSETS__
  	int len;
  	AAsset *asset = android_seek_to_file_in_pak("gfx/palette.lmp", &len);
  	if (!asset)

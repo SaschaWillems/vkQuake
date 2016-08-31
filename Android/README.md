@@ -11,10 +11,9 @@ Even though the Android port uses the native app glue for input and asset manage
 The repository contains a prebuild `libSDL2.a` static library for `arm-v7`. If you need this for a different platform or want to update, run the `buildstatic.py` script from the `jni/SDL2` subfolder. 
 
 ## PAK files
-`.pak` are loaded as assets stored in the `vkQuake.apk`. So **before building** they have to be put into the `assets/id1` folder so they get packaged during the build process.
+Put the `id1` folder containing the `.pak` files in the root folder of your external storage (or internal, if the device has no external storage). vkQuake will then load the files from that folder at startup.
 
-## Config files
-Config files will also be loaded from the apk as assets. The asset folder includes a default `config.cfg` for gamepad usage. If you need to change config values, edit the file in `assets/id1` before building  
+
 
 ## Device support
 - **To run these examples you need a device with an Android image that suports Vulkan**
@@ -33,7 +32,6 @@ Config files will also be loaded from the apk as assets. The asset folder includ
 - Sound
 - Keyboard input
 - Touch input
-- Saving/loading games and config 
 
 ## Building
 

@@ -56,6 +56,7 @@ cvar_t		sys_throttle = { "sys_throttle", "0.02", CVAR_ARCHIVE };
 static FILE		*sys_handles[MAX_HANDLES];
 
 /*
+if LOAD_FROM_ASSETS is defined:
 Use Android's asset manager for loading files stored in the applications apk - Sascha Willems
 Writing files using fopen and fwrite works with permission to write to SD card
 */
@@ -86,6 +87,7 @@ long Sys_filelength(FILE *f)
 	return end;
 }
 
+#ifdef LOAD_FROM_ASSETS
 AAsset* Sys_FileOpenRead(const char *path)
 {
 	// Asset path must not start with ./
@@ -141,6 +143,61 @@ int Sys_FileRead(AAsset *asset, void *dest, int count)
 	 	Sys_Error("asset is null");
 	return AAsset_read(asset, dest, count);
 }
+#else
+int Sys_FileOpenRead (const char *path, int *hndl)
+{
+	FILE	*f;
+	int	i, retval;
+
+	i = findhandle ();
+	f = fopen(path, "rb");
+
+	if (!f)
+	{
+		*hndl = -1;
+		retval = -1;
+	}
+	else
+	{
+		sys_handles[i] = f;
+		*hndl = i;
+		retval = Sys_filelength(f);
+	}
+
+	return retval;
+}
+
+int Sys_FileOpenWrite (const char *path)
+{
+	FILE	*f;
+	int		i;
+
+	i = findhandle ();
+	f = fopen(path, "wb");
+
+	if (!f)
+		Sys_Error ("Error opening %s: %s", path, strerror(errno));
+
+	sys_handles[i] = f;
+	return i;
+}
+
+void Sys_FileClose (int handle)
+{
+	fclose (sys_handles[handle]);
+	sys_handles[handle] = NULL;
+}
+
+void Sys_FileSeek (int handle, int position)
+{
+	fseek (sys_handles[handle], position, SEEK_SET);
+}
+
+int Sys_FileRead (int handle, void *dest, int count)
+{
+	return fread (dest, 1, count, sys_handles[handle]);
+}
+#endif
 
 int Sys_FileWrite(int handle, const void *data, int count)
 {
