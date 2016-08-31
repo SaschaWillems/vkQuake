@@ -1068,6 +1068,7 @@ void R_CreatePipelines()
 	VkShaderModule basic_vert_module = R_CreateShaderModule(basic_vert_spv, basic_vert_spv_size);
 	VkShaderModule basic_frag_module = R_CreateShaderModule(basic_frag_spv, basic_frag_spv_size);
 	VkShaderModule basic_alphatest_frag_module = R_CreateShaderModule(basic_alphatest_frag_spv, basic_alphatest_frag_spv_size);
+	VkShaderModule basic_char_frag_module = R_CreateShaderModule(basic_char_frag_spv, basic_char_frag_spv_size);
 	VkShaderModule basic_notex_frag_module = R_CreateShaderModule(basic_notex_frag_spv, basic_notex_frag_spv_size);
 	VkShaderModule world_vert_module = R_CreateShaderModule(world_vert_spv, world_vert_spv_size);
 	VkShaderModule world_frag_module = R_CreateShaderModule(world_frag_spv, world_frag_spv_size);
@@ -1151,7 +1152,7 @@ void R_CreatePipelines()
 	VkPipelineMultisampleStateCreateInfo multisample_state_create_info;
 	memset(&multisample_state_create_info, 0, sizeof(multisample_state_create_info));
 	multisample_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisample_state_create_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisample_state_create_info.rasterizationSamples = vulkan_globals.sample_count;
 
 	VkPipelineDepthStencilStateCreateInfo depth_stencil_state_create_info;
 	memset(&depth_stencil_state_create_info, 0, sizeof(depth_stencil_state_create_info));
@@ -1203,6 +1204,14 @@ void R_CreatePipelines()
 
 	GL_SetObjectName((uint64_t)vulkan_globals.basic_alphatest_pipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "basic_alphatest");
 
+	shader_stages[1].module = basic_char_frag_module;
+
+	err = vkCreateGraphicsPipelines(vulkan_globals.device, VK_NULL_HANDLE, 1, &pipeline_create_info, NULL, &vulkan_globals.basic_char_pipeline);
+	if (err != VK_SUCCESS)
+		Sys_Error("vkCreateGraphicsPipelines failed");
+
+	GL_SetObjectName((uint64_t)vulkan_globals.basic_char_pipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "basic_char");
+
 	shader_stages[1].module = basic_notex_frag_module;
 
 	blend_attachment_state.blendEnable = VK_TRUE;
@@ -1240,8 +1249,10 @@ void R_CreatePipelines()
 	//================
 	// Warp
 	//================
+	multisample_state_create_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
 	input_assembly_state_create_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-	
+
 	blend_attachment_state.blendEnable = VK_FALSE;
 
 	shader_stages[0].module = basic_vert_module;
@@ -1258,6 +1269,8 @@ void R_CreatePipelines()
 	//================
 	// Particles
 	//================
+	multisample_state_create_info.rasterizationSamples = vulkan_globals.sample_count;
+
 	input_assembly_state_create_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	
 	depth_stencil_state_create_info.depthTestEnable = VK_TRUE;
@@ -1534,6 +1547,7 @@ void R_CreatePipelines()
 	//================
 	// Postprocess pipeline
 	//================
+	multisample_state_create_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 	rasterization_state_create_info.cullMode = VK_CULL_MODE_NONE;
 	depth_stencil_state_create_info.depthTestEnable = VK_FALSE;
 	blend_attachment_state.blendEnable = VK_FALSE;
@@ -1564,8 +1578,36 @@ void R_CreatePipelines()
 	vkDestroyShaderModule(vulkan_globals.device, world_vert_module, NULL);
 	vkDestroyShaderModule(vulkan_globals.device, basic_notex_frag_module, NULL);
 	vkDestroyShaderModule(vulkan_globals.device, basic_alphatest_frag_module, NULL);
+	vkDestroyShaderModule(vulkan_globals.device, basic_char_frag_module, NULL);
 	vkDestroyShaderModule(vulkan_globals.device, basic_frag_module, NULL);
 	vkDestroyShaderModule(vulkan_globals.device, basic_vert_module, NULL);
+}
+
+/*
+===============
+R_DestroyPipelines
+===============
+*/
+void R_DestroyPipelines(void)
+{
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.basic_char_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.basic_alphatest_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.basic_blend_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.basic_notex_blend_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.basic_poly_blend_pipeline, NULL);
+	for (int i = 0; i < world_pipeline_count; ++i)
+		vkDestroyPipeline(vulkan_globals.device, vulkan_globals.world_pipelines[i], NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.water_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.water_blend_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.warp_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.particle_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.sprite_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.sky_color_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.sky_box_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.sky_layer_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.alias_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.alias_blend_pipeline, NULL);
+	vkDestroyPipeline(vulkan_globals.device, vulkan_globals.postprocess_pipeline, NULL);
 }
 
 /*

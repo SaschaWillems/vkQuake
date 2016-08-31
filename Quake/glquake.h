@@ -121,6 +121,7 @@ typedef struct
 	VkPhysicalDeviceMemoryProperties	memory_properties;
 	uint32_t							gfx_queue_family_index;
 	VkFormat							depth_format;
+	VkSampleCountFlagBits				sample_count;
 
 	// Render passes
 	VkRenderPass						main_render_pass;
@@ -133,6 +134,7 @@ typedef struct
 	VkPipeline							basic_blend_pipeline;
 	VkPipeline							basic_notex_blend_pipeline;
 	VkPipeline							basic_poly_blend_pipeline;
+	VkPipeline							basic_char_pipeline;
 	VkPipelineLayout					basic_pipeline_layout;
 	VkPipeline							world_pipelines[world_pipeline_count];
 	VkPipelineLayout					world_pipeline_layout;
@@ -354,9 +356,6 @@ void R_ChainSurface (msurface_t *surf, texchain_t chain);
 void R_DrawTextureChains (qmodel_t *model, entity_t *ent, texchain_t chain);
 void R_DrawWorld_Water (void);
 
-void GLSLGamma_DeleteTexture (void);
-void GLSLGamma_GammaCorrect (void);
-
 float GL_WaterAlphaForSurface (msurface_t *fa);
 
 int GL_MemoryTypeFromProperties(uint32_t type_bits, VkFlags requirements_mask, VkFlags preferred_mask);
@@ -366,6 +365,7 @@ void R_CreateDescriptorSetLayouts();
 void R_InitSamplers();
 void R_CreatePipelineLayouts();
 void R_CreatePipelines();
+void R_DestroyPipelines();
 
 void R_InitStagingBuffers();
 void R_SubmitStagingBuffers();
