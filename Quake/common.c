@@ -1981,7 +1981,7 @@ byte *COM_LoadFile (const char *path, int usehunk, unsigned int *path_id)
 	((byte *)buf)[len] = 0;
 
 	Sys_FileRead (h, buf, len);
-#ifndef __ANDROID__
+#ifndef __ANDROID_LOAD_FROM_ASSETS__
 	COM_CloseFile (h);
 #endif
 
@@ -2347,8 +2347,10 @@ void COM_InitFilesystem (void) //johnfitz -- modified based on topaz's tutorial
 	if ((com_basedir[j-1] == '\\') || (com_basedir[j-1] == '/'))
 		com_basedir[j-1] = 0;
 
+#ifdef __ANDROID__
 #ifndef __ANDROID_LOAD_FROM_ASSETS__
 	q_strlcpy (com_basedir, "/sdcard/", sizeof("/sdcard/"));
+#endif
 #endif		
 
 	// start up with GAMENAME by default (id1)

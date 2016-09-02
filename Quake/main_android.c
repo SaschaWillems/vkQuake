@@ -126,6 +126,7 @@ void android_init()
 		QUAKESPASM_VERSION, QUAKESPASM_VER_PATCH);
 	Sys_Printf("vkQuake %1.2f.%d (c) Axel Gneiting\n",
 		VKQUAKE_VERSION, VKQUAKE_VER_PATCH);
+	Sys_Printf("Vulkan Android port (c) Sascha Willems\n");
 
 	Host_Init();
 
@@ -151,6 +152,9 @@ int32_t handle_app_input(struct android_app* app, AInputEvent* event)
 			// Trigger
 			trigger_left = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_LTRIGGER, 0) > 0.0015f;
 			trigger_right = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_RTRIGGER, 0) > 0.0015f;
+
+			Key_Event(K_LTRIGGER, trigger_left);
+			Key_Event(K_RTRIGGER, trigger_right);
 		}
 		else
 		{
@@ -206,10 +210,10 @@ int32_t handle_app_input(struct android_app* app, AInputEvent* event)
 			Con_ToggleConsole_f();
 			break;
 		case AKEYCODE_BUTTON_L1:
-			Key_Event(K_LTRIGGER, down);
+			Key_Event(K_LSHOULDER, down);
 			break;
 		case AKEYCODE_BUTTON_R1:
-			Key_Event(K_RTRIGGER, down);
+			Key_Event(K_RSHOULDER, down);
 			break;
 		case AKEYCODE_BUTTON_START:
 			break;
@@ -331,14 +335,6 @@ void android_main_loop()
 				float pos = (fabsf(axis_right_y) - deadZone) / range;
 				float rot = pos * ((axis_right_y < 0.0f) ? -1.0f : 1.0f) * 0.025f;
 				cl.viewangles[PITCH] += m_pitch.value * rot;
-			}
-
-			// Strate (using trigger)
-			if (trigger_left)
-			{
-			}
-			if (trigger_right)
-			{
 			}
 		}
 	}
