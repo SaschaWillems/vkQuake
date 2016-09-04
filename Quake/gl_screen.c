@@ -895,6 +895,11 @@ keypress.
 */
 int SCR_ModalMessage (const char *text, float timeout) //johnfitz -- timeout
 {
+#ifdef __ANDROID__
+	//todo: Not working with Android yet, would end up in an infinite loop
+	return 1;
+#endif
+
 	double time1, time2; //johnfitz -- timeout
 	int lastkey, lastchar;
 
