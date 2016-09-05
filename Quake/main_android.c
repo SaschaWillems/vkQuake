@@ -3,6 +3,7 @@ Copyright (C) 1996-2001 Id Software, Inc.
 Copyright (C) 2002-2005 John Fitzgibbons and others
 Copyright (C) 2007-2008 Kristian Duske
 Copyright (C) 2010-2014 QuakeSpasm developers
+Copyright (C) 2016 Sascha Willems (Android parts)
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -95,6 +96,37 @@ static quakeparms_t	parms;
 /* Called before SDL_main() to initialize JNI bindings in SDL library */
 extern void SDL_Android_Init(JNIEnv* env, jclass cls);
 
+// Write a default config with gamepad specific settings to game basedir
+// todo: Other inputs?
+void android_write_default_cfg()
+{
+	// Create default.cfg on first startup
+	FILE *f = fopen (va("%s/default.cfg", com_gamedir), "w");
+	if (f)
+	{
+		fprintf (f, "bind \"UPARROW\" \"+forward\"\n");
+		fprintf (f, "bind \"DOWNARROW\" \"+back\"\n");
+		fprintf (f, "bind \"LEFTARROW\" \"+moveleft\"\n");
+		fprintf (f, "bind \"RIGHTARROW\" \"+moveright\"\n");
+		fprintf (f, "bind \"RTHUMB\" \"+jump\"\n");
+		fprintf (f, "bind \"LSHOULDER\" \"+speed\"\n");
+		fprintf (f, "bind \"RSHOULDER\" \"+attack\"\n");
+		fprintf (f, "bind \"LTRIGGER\" \"impulse 12\"\n");
+		fprintf (f, "bind \"RTRIGGER\" \"impulse 10\"\n");		
+		fprintf (f, "scr_menuscale \"2.0\"\n");				
+		fprintf (f, "scr_sbarscale \"2.0\"\n");
+		fprintf (f, "scr_conscale \"2.0\"\n");		
+		// Uncomment for performance testing (note: may have sideeffects on movement and animations)
+		//fprintf (f, "scr_showfps \"1\"\n");
+		//fprintf (f, "host_maxfps \"1500\"\n");				
+	}
+	else
+	{
+		Con_Printf ("Couldn't write %s/default.cfg.\n", com_gamedir);
+	}
+	fclose (f);	
+}
+
 void android_init()
 {
 	SDL_SetMainReady();
@@ -129,6 +161,8 @@ void android_init()
 	Sys_Printf("Vulkan Android port (c) Sascha Willems\n");
 
 	Host_Init();
+
+	android_write_default_cfg();
 
 	Sys_Printf("Initialization done");
 
@@ -200,14 +234,15 @@ int32_t handle_app_input(struct android_app* app, AInputEvent* event)
 			Key_Event(K_ENTER, down);
 			break;
 		case AKEYCODE_BUTTON_B:
-			Key_Event(K_ESCAPE, down);
+			Key_Event(K_BBUTTON, down);
 			return 1;
 			break;
 		case AKEYCODE_BUTTON_X:
-			Key_Event(K_MOUSE1, down);
+			Key_Event(K_XBUTTON, down);
 			break;
 		case AKEYCODE_BUTTON_Y:
-			Con_ToggleConsole_f();
+			//Con_ToggleConsole_f();
+			Key_Event(K_YBUTTON, down);
 			break;
 		case AKEYCODE_BUTTON_L1:
 			Key_Event(K_LSHOULDER, down);
@@ -216,6 +251,8 @@ int32_t handle_app_input(struct android_app* app, AInputEvent* event)
 			Key_Event(K_RSHOULDER, down);
 			break;
 		case AKEYCODE_BUTTON_START:
+			//Con_ToggleConsole_f();
+			Key_Event(K_ESCAPE, down);
 			break;
 		case AKEYCODE_BUTTON_THUMBL:
 			Key_Event(K_LTHUMB, down);
@@ -300,42 +337,28 @@ void android_main_loop()
 
 			Host_Frame(time);
 
-			//if (time < sys_throttle.value)
-			//	SDL_Delay(1);
-
 			oldtime = newtime;
 
 			// Update input state
 			const float deadZone = 0.0015f;
 			const float range = 1.0f - deadZone;
 
-			// Move
-			if (fabsf(axis_left_y) > deadZone)
-			{
-				//float pos = (fabsf(axis_left_y) - deadZone) / range;
-				//float mvm = pos * ((axis_right_y < 0.0f) ? -1.0f : 1.0f) * 15.0f;
-				//cmd->forwardmove -= m_forward.value * dmy;
-			}
-			if (fabsf(axis_left_x) > deadZone)
-			{
-				//float pos = (fabsf(axis_left_x) - deadZone) / range;
-				//float mvm = pos * ((axis_left_x < 0.0f) ? -1.0f : 1.0f) * 15.0f;
-			}
-
 			// Look
 			if (fabsf(axis_right_x) > deadZone)
 			{
 				float pos = (fabsf(axis_right_x) - deadZone) / range;
-				float rot = pos * ((axis_right_x < 0.0f) ? -1.0f : 1.0f) * 0.025f;
+				float rot = pos * ((axis_right_x < 0.0f) ? -1.0f : 1.0f) * 71.0f / (host_frametime * 1000.0f) * 0.015f;
 				cl.viewangles[YAW] -= m_yaw.value * rot;
 			}
 
 			if (fabsf(axis_right_y) > deadZone)
 			{
 				float pos = (fabsf(axis_right_y) - deadZone) / range;
-				float rot = pos * ((axis_right_y < 0.0f) ? -1.0f : 1.0f) * 0.025f;
+				float rot = pos * ((axis_right_y < 0.0f) ? -1.0f : 1.0f) * 71.0f / (host_frametime * 1000.0f) * 0.015f;
 				cl.viewangles[PITCH] += m_pitch.value * rot;
 			}
+
+			LOGD("%f", 71.0f / (host_frametime * 1000.0f));
 		}
 	}
 }

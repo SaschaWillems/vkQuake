@@ -20,18 +20,16 @@ Put the `id1` folder containing the `.pak` files in the root folder of your exte
 - Builds currently only support `arm-v7`, x86 may follow at a later point
 - Android TV leanback launcher is supported
 - Gamepad support
-    - Left stick: Move
-    - Right stick: Aim
-    - X: Fire
-    - A: Jump
-    - B: Menu
-    - Y: Console
-    - L1/R1: Switch weapon 
 
 ## Missing stuff
 - Sound
 - Keyboard input
 - Touch input
+
+## Default controller layout
+The game will create a default.cfg at start with a control layout optimized for gamepad use:
+
+<img src="./default_controller_config.jpg" width="384px"/>
 
 ## Building
 

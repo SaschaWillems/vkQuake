@@ -228,7 +228,7 @@ static int Sys_NumCPUs(void)
 void Sys_Init(void)
 {
 	// Get a path we can write to on external storage
-	const char* base_path = android_app->activity->internalDataPath;
+	const char* base_path = android_app->activity->externalDataPath;
 	host_parms->userdir = base_path;
 	Sys_Printf("userdir %s", host_parms->userdir);
 	host_parms->numcpus = Sys_NumCPUs();
