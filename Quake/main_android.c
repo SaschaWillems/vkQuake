@@ -116,6 +116,7 @@ void android_write_default_cfg()
 		fprintf (f, "scr_menuscale \"2.0\"\n");				
 		fprintf (f, "scr_sbarscale \"2.0\"\n");
 		fprintf (f, "scr_conscale \"2.0\"\n");		
+		fprintf (f, "sensitivity \"5\"\n");		
 		// Uncomment for performance testing (note: may have sideeffects on movement and animations)
 		//fprintf (f, "scr_showfps \"1\"\n");
 		//fprintf (f, "host_maxfps \"1500\"\n");				
@@ -347,18 +348,16 @@ void android_main_loop()
 			if (fabsf(axis_right_x) > deadZone)
 			{
 				float pos = (fabsf(axis_right_x) - deadZone) / range;
-				float rot = pos * ((axis_right_x < 0.0f) ? -1.0f : 1.0f) * 71.0f / (host_frametime * 1000.0f) * 0.015f;
+				float rot = pos * ((axis_right_x < 0.0f) ? -1.0f : 1.0f) * 71.0f / (host_frametime * 1000.0f) * 0.001f * sensitivity.value;
 				cl.viewangles[YAW] -= m_yaw.value * rot;
 			}
 
 			if (fabsf(axis_right_y) > deadZone)
 			{
 				float pos = (fabsf(axis_right_y) - deadZone) / range;
-				float rot = pos * ((axis_right_y < 0.0f) ? -1.0f : 1.0f) * 71.0f / (host_frametime * 1000.0f) * 0.015f;
+				float rot = pos * ((axis_right_y < 0.0f) ? -1.0f : 1.0f) * 71.0f / (host_frametime * 1000.0f) * 0.001f * sensitivity.value;
 				cl.viewangles[PITCH] += m_pitch.value * rot;
 			}
-
-			LOGD("%f", 71.0f / (host_frametime * 1000.0f));
 		}
 	}
 }

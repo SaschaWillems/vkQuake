@@ -1889,8 +1889,6 @@ byte *COM_LoadFile (const char *path, int usehunk, unsigned int *path_id)
 
 	buf = NULL;	// quiet compiler warning
 
-	Sys_Printf("COM_LoadFile %s", path);
-
 // look for it in the filesystem or pack files
 #ifdef __ANDROID_LOAD_FROM_ASSETS__
 	searchpath_t	*search;
