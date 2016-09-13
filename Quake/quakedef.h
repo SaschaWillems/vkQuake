@@ -39,7 +39,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	FITZQUAKE_VERSION	0.85	//johnfitz
 #define	QUAKESPASM_VERSION	0.92
 #define	QUAKESPASM_VER_PATCH	0	// helper to print a string like 0.91.0
-#define	VKQUAKE_VERSION		0.70
+#define	VKQUAKE_VERSION		0.71
 #define	VKQUAKE_VER_PATCH	0	// helper to print a string like 0.91.0
 
 //define	PARANOID			// speed sapping error checking
@@ -228,13 +228,11 @@ typedef struct
 #ifdef _WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
-
 #ifdef __ANDROID__
 #include "vulkanandroid.h"
 #endif
 
 #include <vulkan/vulkan.h>
-#include <vulkan/vk_platform.h>
 
 #ifndef APIENTRY
 #define	APIENTRY

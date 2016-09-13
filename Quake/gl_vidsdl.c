@@ -572,6 +572,7 @@ GL_InitInstance
 static void GL_InitInstance( void )
 {
 	VkResult err;
+	uint32_t i;
 
 #ifdef __ANDROID__
 	Sys_Printf("Load Vulkan library");
@@ -590,7 +591,7 @@ static void GL_InitInstance( void )
 		VkExtensionProperties *instance_extensions = malloc(sizeof(VkExtensionProperties) * instance_extension_count);
 		err = vkEnumerateInstanceExtensionProperties(NULL, &instance_extension_count, instance_extensions);
 
-		for (uint32_t i = 0; i < instance_extension_count; ++i)
+		for (i = 0; i < instance_extension_count; ++i)
 		{
 			if (strcmp(VK_KHR_SURFACE_EXTENSION_NAME, instance_extensions[i].extensionName) == 0)
 			{
@@ -717,6 +718,7 @@ GL_InitDevice
 static void GL_InitDevice( void )
 {
 	VkResult err;
+	uint32_t i;
 
 	uint32_t physical_device_count;
 	err = vkEnumeratePhysicalDevices(vulkan_instance, &physical_device_count, NULL);
@@ -741,7 +743,7 @@ static void GL_InitDevice( void )
 		VkExtensionProperties *device_extensions = malloc(sizeof(VkExtensionProperties) * device_extension_count);
 		err = vkEnumerateDeviceExtensionProperties(vulkan_physical_device, NULL, &device_extension_count, device_extensions);
 
-		for (uint32_t i = 0; i < device_extension_count; ++i)
+		for (i = 0; i < device_extension_count; ++i)
 		{
 			if (strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, device_extensions[i].extensionName) == 0)
 			{
@@ -786,14 +788,15 @@ static void GL_InitDevice( void )
 		Sys_Error("Couldn't find any Vulkan queues");
 	}
 
-	// Iterate over each queue to learn whether it supports presenting:
-	VkBool32 *queue_supports_present = (VkBool32 *)malloc(vulkan_queue_count * sizeof(VkBool32));
-	for (uint32_t i = 0; i < vulkan_queue_count; ++i)
-		fpGetPhysicalDeviceSurfaceSupportKHR(vulkan_physical_device, i, vulkan_surface, &queue_supports_present[i]);
-
 	VkQueueFamilyProperties * queue_family_properties = (VkQueueFamilyProperties *)malloc(vulkan_queue_count * sizeof(VkQueueFamilyProperties));
 	vkGetPhysicalDeviceQueueFamilyProperties(vulkan_physical_device, &vulkan_queue_count, queue_family_properties);
-	for (uint32_t i = 0; i < vulkan_queue_count; ++i)
+
+	// Iterate over each queue to learn whether it supports presenting:
+	VkBool32 *queue_supports_present = (VkBool32 *)malloc(vulkan_queue_count * sizeof(VkBool32));
+	for (i = 0; i < vulkan_queue_count; ++i)
+		fpGetPhysicalDeviceSurfaceSupportKHR(vulkan_physical_device, i, vulkan_surface, &queue_supports_present[i]);
+
+	for (i = 0; i < vulkan_queue_count; ++i)
 	{
 		if (((queue_family_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) && queue_supports_present[i])
 		{
@@ -872,6 +875,8 @@ GL_InitCommandBuffers
 */
 static void GL_InitCommandBuffers( void )
 {
+	int i;
+
 	Con_Printf("Creating command buffers\n");
 
 	VkResult err;
@@ -900,7 +905,7 @@ static void GL_InitCommandBuffers( void )
 	memset(&fence_create_info, 0, sizeof(fence_create_info));
 	fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
-	for (int i = 0; i < NUM_COMMAND_BUFFERS; ++i) 
+	for (i = 0; i < NUM_COMMAND_BUFFERS; ++i) 
 	{
 		err = vkCreateFence(vulkan_globals.device, &fence_create_info, NULL, &command_buffer_fences[i]);
 		if (err != VK_SUCCESS)
@@ -1298,6 +1303,8 @@ GL_CreateSwapChain
 */
 static void GL_CreateSwapChain( void )
 {
+	uint32_t i;
+
 	Con_Printf("Creating swap chain\n");
 
 	VkResult err;
@@ -1339,7 +1346,7 @@ static void GL_CreateSwapChain( void )
 	{
 		qboolean found_immediate = false;
 		qboolean found_mailbox = false;
-		for (uint32_t i = 0; i < present_mode_count; ++i)
+		for (i = 0; i < present_mode_count; ++i)
 		{
 			if(present_modes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
 				found_immediate = true;
@@ -1421,7 +1428,7 @@ static void GL_CreateSwapChain( void )
 	memset(&semaphore_create_info, 0, sizeof(semaphore_create_info));
 	semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	for (uint32_t i = 0; i < num_swap_chain_images; ++i)
+	for (i = 0; i < num_swap_chain_images; ++i)
 	{
 		GL_SetObjectName((uint64_t)swapchain_images[i], VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "Swap Chain");
 
@@ -1448,6 +1455,8 @@ GL_CreateFrameBuffers
 */
 static void GL_CreateFrameBuffers( void )
 {
+	uint32_t i;
+
 	Con_Printf("Creating frame buffers\n");
 
 	VkResult err;
@@ -1463,7 +1472,7 @@ static void GL_CreateFrameBuffers( void )
 	framebuffer_create_info.height = vid.height;
 	framebuffer_create_info.layers = 1;
 
-	for (uint32_t i = 0; i < num_swap_chain_images; ++i)
+	for (i = 0; i < num_swap_chain_images; ++i)
 	{
 		VkImageView attachments[4] = { color_buffer_view, depth_buffer_view, swapchain_images_views[i], msaa_color_buffer_view };
 		framebuffer_create_info.pAttachments = attachments;
@@ -1482,6 +1491,8 @@ GL_DestroyBeforeSetMode
 */
 static void GL_DestroyBeforeSetMode( void )
 {
+	uint32_t i;
+
 	GL_WaitForDeviceIdle();
 
 	vkFreeDescriptorSets(vulkan_globals.device, vulkan_globals.descriptor_pool, 1, &postprocess_descriptor_set);
@@ -1517,7 +1528,7 @@ static void GL_DestroyBeforeSetMode( void )
 	depth_buffer = VK_NULL_HANDLE;
 	depth_buffer_memory = VK_NULL_HANDLE;
 
-	for (uint32_t i = 0; i < num_swap_chain_images; ++i)
+	for (i = 0; i < num_swap_chain_images; ++i)
 	{
 		vkDestroyImageView(vulkan_globals.device, swapchain_images_views[i], NULL);
 		swapchain_images_views[i] = VK_NULL_HANDLE;
