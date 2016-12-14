@@ -70,6 +70,9 @@
     <ClCompile Include="..\..\Quake\snd_wave.c">
       <Filter>Sound</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Quake\snd_xmp.c">
+      <Filter>Sound</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Quake\net_dgrm.c">
       <Filter>Network</Filter>
     </ClCompile>
@@ -295,7 +298,7 @@
     <ClCompile Include="..\..\Quake\gl_heap.c">
       <Filter>Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Shaders\Compiled\basic_char_frag.c">
+    <ClCompile Include="..\..\Shaders\Compiled\screen_warp_comp.c">
       <Filter>Shaders\Compiled</Filter>
     </ClCompile>
   </ItemGroup>
@@ -328,6 +331,9 @@
       <Filter>Sound</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Quake\snd_wave.h">
+      <Filter>Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Quake\snd_xmp.h">
       <Filter>Sound</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Quake\net.h">
@@ -544,7 +550,7 @@
     <None Include="..\..\Shaders\postprocess.frag">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="..\..\Shaders\basic_char.frag">
+    <None Include="..\..\Shaders\screen_warp.comp">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

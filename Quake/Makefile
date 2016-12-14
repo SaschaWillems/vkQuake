@@ -16,8 +16,9 @@ USE_CODEC_FLAC=0
 USE_CODEC_MP3=1
 USE_CODEC_VORBIS=1
 USE_CODEC_OPUS=0
-# either mikmod (preferred) or modplug, not both
+# either mikmod, or xmp (or modplug.)
 USE_CODEC_MIKMOD=0
+USE_CODEC_XMP=0
 USE_CODEC_MODPLUG=0
 USE_CODEC_UMX=0
 
@@ -63,6 +64,7 @@ do_strip=
 else
 DFLAGS += -DNDEBUG
 CFLAGS += -O2
+CFLAGS += -std=gnu99
 CFLAGS += $(call check_gcc,-fweb,)
 CFLAGS += $(call check_gcc,-frename-registers,)
 cmd_strip=$(STRIP) $(1)
@@ -70,7 +72,6 @@ define do_strip
 	$(call cmd_strip,$(1));
 endef
 endif
-CFLAGS += -std=gnu99
 CFLAGS += -I$(VULKAN_INCLUDE_DIR) -DLINUX -DVK_USE_PLATFORM_XCB_KHR
 
 ifeq ($(DO_USERDIRS),1)
@@ -164,6 +165,10 @@ ifeq ($(USE_CODEC_MIKMOD),1)
 CFLAGS+= -DUSE_CODEC_MIKMOD
 CODECLIBS+= -lmikmod
 endif
+ifeq ($(USE_CODEC_XMP),1)
+CFLAGS+= -DUSE_CODEC_XMP
+CODECLIBS+= -lxmp
+endif
 ifeq ($(USE_CODEC_MODPLUG),1)
 CFLAGS+= -DUSE_CODEC_MODPLUG
 CODECLIBS+= -lmodplug
@@ -206,6 +211,7 @@ MUSIC_OBJS:= bgmusic.o \
 	$(mp3_obj) \
 	snd_mikmod.o \
 	snd_modplug.o \
+	snd_xmp.o \
 	snd_umx.o
 COMOBJ_SND := snd_dma.o snd_mix.o snd_mem.o $(MUSIC_OBJS)
 SYSOBJ_SND := snd_sdl.o
@@ -221,7 +227,7 @@ SHADER_OBJS = \
 	alias_frag.o \
 	alias_vert.o \
 	basic_alphatest_frag.o \
-	basic_char_frag.o \
+	screen_warp_comp.o \
 	basic_frag.o \
 	basic_notex_frag.o \
 	basic_vert.o \
@@ -249,11 +255,11 @@ GLOBJS = \
 	image.o \
 	gl_texmgr.o \
 	gl_mesh.o \
+	gl_heap.o \
 	r_sprite.o \
 	r_alias.o \
 	r_brush.o \
-	gl_model.o \
-	gl_heap.o
+	gl_model.o
 
 OBJS := strlcat.o \
 	strlcpy.o \
