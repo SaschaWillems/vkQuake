@@ -54,8 +54,8 @@ void BoundPoly (int numverts, float *verts, vec3_t mins, vec3_t maxs)
 	int		i, j;
 	float	*v;
 
-	mins[0] = mins[1] = mins[2] = 9999;
-	maxs[0] = maxs[1] = maxs[2] = -9999;
+	mins[0] = mins[1] = mins[2] = 999999999;
+	maxs[0] = maxs[1] = maxs[2] = -999999999;
 	v = verts;
 	for (i=0 ; i<numverts ; i++)
 		for (j=0 ; j<3 ; j++, v++)
@@ -272,7 +272,7 @@ void R_UpdateWarpTextures (void)
 		VkImageMemoryBarrier * image_barrier = &warp_image_barriers[num_warp_textures];
 		image_barrier->sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		image_barrier->pNext = NULL;
-		image_barrier->srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		image_barrier->srcAccessMask = 0;
 		image_barrier->dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 		image_barrier->oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		image_barrier->newLayout = VK_IMAGE_LAYOUT_GENERAL;

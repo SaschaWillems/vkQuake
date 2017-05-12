@@ -25,8 +25,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __GLQUAKE_H
 #define __GLQUAKE_H
 
-void GL_WaitForDeviceIdle();
+void GL_WaitForDeviceIdle (void);
 void GL_BeginRendering (int *x, int *y, int *width, int *height);
+void GL_AcquireNextSwapChainImage (void);
 void GL_EndRendering (void);
 void GL_Set2D (void);
 
@@ -49,6 +50,7 @@ extern	int glx, gly, glwidth, glheight;
 
 #define	MAX_GLTEXTURES	2048
 #define NUM_COLOR_BUFFERS 2
+#define STAGING_BUFFER_SIZE_KB	16384
 
 void R_TimeRefresh_f (void);
 void R_ReadPointFile_f (void);
@@ -115,6 +117,7 @@ typedef struct
 	VkPhysicalDeviceProperties			device_properties;
 	VkPhysicalDeviceMemoryProperties	memory_properties;
 	uint32_t							gfx_queue_family_index;
+	VkFormat							color_format;
 	VkFormat							depth_format;
 	VkSampleCountFlagBits				sample_count;
 	qboolean							supersampling;
@@ -268,6 +271,7 @@ typedef struct {
 	double	packetsize;
 	double	efrags;
 	double	beams;
+	double	varstring;
 } overflowtimes_t;
 extern overflowtimes_t dev_overflows; //this stores the last time overflow messages were displayed, not the last time overflows occured
 #define CONSOLE_RESPAM_TIME 3 // seconds between repeated warning messages

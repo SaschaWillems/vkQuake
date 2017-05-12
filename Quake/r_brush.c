@@ -526,7 +526,7 @@ void GL_BuildLightmaps (void)
 
 	//johnfitz -- warn about exceeding old limits
 	if (i >= 64)
-		Con_DWarning ("%i lightmaps exceeds standard limit of 64.\n", i);
+		Con_DWarning ("%i lightmaps exceeds standard limit of 64 (max = %d).\n", i, MAX_LIGHTMAPS);
 	//johnfitz
 }
 
@@ -566,6 +566,8 @@ void GL_BuildBModelVertexBuffer (void)
 	int		i, j;
 	qmodel_t	*m;
 	float		*varray;
+	int remaining_size;
+	int copy_offset;
 
 	// count all verts in all models
 	numverts = 0;
@@ -640,18 +642,28 @@ void GL_BuildBModelVertexBuffer (void)
 	if (err != VK_SUCCESS)
 		Sys_Error("vkBindImageMemory failed");
 
-	VkBuffer staging_buffer;
-	VkCommandBuffer command_buffer;
-	int staging_offset;
-	unsigned char * staging_memory = R_StagingAllocate(varray_bytes, 1, &command_buffer, &staging_buffer, &staging_offset);
+	remaining_size = varray_bytes;
+	copy_offset = 0;
 
-	memcpy(staging_memory, varray, varray_bytes);
+	while (remaining_size > 0)
+	{
+		const int size_to_copy = q_min(remaining_size, STAGING_BUFFER_SIZE_KB * 1024);
+		VkBuffer staging_buffer;
+		VkCommandBuffer command_buffer;
+		int staging_offset;
+		unsigned char * staging_memory = R_StagingAllocate(size_to_copy, 1, &command_buffer, &staging_buffer, &staging_offset);
 
-	VkBufferCopy region;
-	region.srcOffset = staging_offset;
-	region.dstOffset = 0;
-	region.size = varray_bytes;
-	vkCmdCopyBuffer(command_buffer, staging_buffer, bmodel_vertex_buffer, 1, &region);
+		memcpy(staging_memory, (byte*)varray + copy_offset, size_to_copy);
+
+		VkBufferCopy region;
+		region.srcOffset = staging_offset;
+		region.dstOffset = copy_offset;
+		region.size = size_to_copy;
+		vkCmdCopyBuffer(command_buffer, staging_buffer, bmodel_vertex_buffer, 1, &region);
+
+		copy_offset += size_to_copy;
+		remaining_size -= size_to_copy;
+	}
 
 	free (varray);
 }
@@ -861,8 +873,8 @@ static void R_UploadLightmap(int lmap, gltexture_t * lightmap)
 	VkImageMemoryBarrier image_memory_barrier;
 	memset(&image_memory_barrier, 0, sizeof(image_memory_barrier));
 	image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	image_memory_barrier.srcAccessMask = 0;
-	image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	image_memory_barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -880,6 +892,8 @@ static void R_UploadLightmap(int lmap, gltexture_t * lightmap)
 
 	image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &image_memory_barrier);
 
 	theRect->l = BLOCK_WIDTH;

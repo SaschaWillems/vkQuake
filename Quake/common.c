@@ -196,6 +196,46 @@ int q_strncasecmp(const char *s1, const char *s2, size_t n)
 	return (int)(c1 - c2);
 }
 
+//spike -- grabbed this from fte, because its useful to me
+char *q_strcasestr(const char *haystack, const char *needle)
+{
+	int c1, c2, c2f;
+	int i;
+	c2f = *needle;
+	if (c2f >= 'a' && c2f <= 'z')
+		c2f -= ('a' - 'A');
+	if (!c2f)
+		return (char*)haystack;
+	while (1)
+	{
+		c1 = *haystack;
+		if (!c1)
+			return NULL;
+		if (c1 >= 'a' && c1 <= 'z')
+			c1 -= ('a' - 'A');
+		if (c1 == c2f)
+		{
+			for (i = 1; ; i++)
+			{
+				c1 = haystack[i];
+				c2 = needle[i];
+				if (c1 >= 'a' && c1 <= 'z')
+					c1 -= ('a' - 'A');
+				if (c2 >= 'a' && c2 <= 'z')
+					c2 -= ('a' - 'A');
+				if (!c2)
+					return (char*)haystack;	//end of needle means we found a complete match
+				if (!c1)	//end of haystack means we can't possibly find needle in it any more
+					return NULL;
+				if (c1 != c2)	//mismatch means no match starting at haystack[0]
+					break;
+			}
+		}
+		haystack++;
+	}
+	return NULL;	//didn't find it
+}
+
 char *q_strlwr (char *str)
 {
 	char	*c;
@@ -2025,6 +2065,63 @@ byte *COM_LoadMallocFile (const char *path, unsigned int *path_id)
 	return COM_LoadFile (path, LOADFILE_MALLOC, path_id);
 }
 
+byte *COM_LoadMallocFile_TextMode_OSPath (const char *path, long *len_out)
+{
+	FILE	*f;
+	byte	*data;
+	long	len, actuallen;
+	
+	// ericw -- this is used by Host_Loadgame_f. Translate CRLF to LF on load games,
+	// othewise multiline messages have a garbage character at the end of each line.
+	// TODO: could handle in a way that allows loading CRLF savegames on mac/linux
+	// without the junk characters appearing.
+	f = fopen (path, "rt");
+	if (f == NULL)
+		return NULL;
+	
+	len = COM_filelength (f);
+	if (len < 0)
+		return NULL;
+	
+	data = (byte *) malloc (len + 1);
+	if (data == NULL)
+		return NULL;
+
+	// (actuallen < len) if CRLF to LF translation was performed
+	actuallen = fread (data, 1, len, f);
+	if (ferror(f))
+	{
+		free (data);
+		return NULL;
+	}
+	data[actuallen] = '\0';
+	
+	if (len_out != NULL)
+		*len_out = actuallen;
+	return data;
+}
+
+const char *COM_ParseIntNewline(const char *buffer, int *value)
+{
+	int consumed = 0;
+	sscanf (buffer, "%i\n%n", value, &consumed);
+	return buffer + consumed;
+}
+
+const char *COM_ParseFloatNewline(const char *buffer, float *value)
+{
+	int consumed = 0;
+	sscanf (buffer, "%f\n%n", value, &consumed);
+	return buffer + consumed;
+}
+
+const char *COM_ParseStringNewline(const char *buffer)
+{
+	int consumed = 0;
+	com_token[0] = '\0';
+	sscanf (buffer, "%1023s\n%n", com_token, &consumed);
+	return buffer + consumed;
+}
 
 /*
 =================
