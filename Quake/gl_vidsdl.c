@@ -160,7 +160,11 @@ VkBool32 debug_message_callback(VkDebugReportFlagsEXT flags, VkDebugReportObject
 		prefix = "WARNING";
 	};
 	
-	Sys_Printf("[Validation %s]: %s\n", prefix, pMsg);
+	Sys_Printf("[Validation %s]: %s\n", prefix, pMsg);	
+
+#ifdef __ANDROID__
+	LOGD("[Validation %s]: %s\n", prefix, pMsg);
+#endif
 
 	return VK_FALSE;
 }
@@ -645,13 +649,30 @@ static void GL_InitInstance( void )
 	instance_create_info.enabledExtensionCount = 2;
 	instance_create_info.ppEnabledExtensionNames = instance_extensions;
 #ifdef _DEBUG
+#ifdef __ANDROID__
+	// vulkan_globals.validation = true;
+	// No meta layer on Android
+	const char * const layer_names[] = {
+		"VK_LAYER_GOOGLE_threading",
+		"VK_LAYER_LUNARG_parameter_validation",
+		"VK_LAYER_LUNARG_object_tracker",
+		"VK_LAYER_LUNARG_core_validation",
+		"VK_LAYER_LUNARG_swapchain",
+		"VK_LAYER_GOOGLE_unique_objects"
+	};
+#else
 	const char * const layer_names[] = { "VK_LAYER_LUNARG_standard_validation" };
+#endif	
 
 	if(vulkan_globals.validation)
 	{
-		Con_Printf("Using VK_LAYER_LUNARG_standard_validation\n");
+		Con_Printf("Using validation layers\n");
 		instance_create_info.enabledExtensionCount = 3;
+#ifdef __ANDROID__
+		instance_create_info.enabledLayerCount = 6;
+#else
 		instance_create_info.enabledLayerCount = 1;
+#endif		
 		instance_create_info.ppEnabledLayerNames = layer_names;
 	}
 #endif
